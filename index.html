@@ -183,7 +183,7 @@
   fitHiDPI();
 
   // Состояние
-  const STATE = { MENU:0, PLAY:1, OVER:2, PAUSE:3 }; let state = STATE.MENU;
+  const STATE = { MENU:0, PLAY:1, OVER:2, PAUSE:3, DEATH:4 }; let state = STATE.MENU;
   const DIFF = {
     easy:   { name:'Лёгко', lives:3, lanes:4, total:100, waves:10, startThrowersWave:6, spawnBase:900, speedMul:0.85, throwerTele:0.9, catchWindow:0.20, gorillaSpeed:1.0 },
     normal: { name:'Норма', lives:3, lanes:4, total:100, waves:10, startThrowersWave:3, spawnBase:800, speedMul:1.00, throwerTele:0.7, catchWindow:0.14, gorillaSpeed:1.0 },
@@ -194,6 +194,8 @@
   const LANE_H = 104; const BASELINE_Y = 100; const FIELD_L = 96;
   const gorilla = { lane:1, lanes:4, x:FIELD_L, w:60, h:56, invul:0, speed:420, holding:null, t:0 };
   const enemies=[]; const projectiles=[]; const stones=[]; const leaves=[]; const parallax={t1:[],t2:[],vines:[]};
+  // состояние анимации смерти
+  let death = null; // { t: секунды, dur: секунды, bits:[], shake:число }
 
   let score=0, lives=3, wave=1, totalToSpawn=100, spawned=0, killed=0, escaped=0, processed=0; let waves=10, spawnTimer=0, spawnInterval=900, gameTime=0, difficulty=DIFF.normal;
 
@@ -348,7 +350,10 @@
     enemies.push(e); spawned++; }
 
   let lastTs=0;
-  function loop(ts){ requestAnimationFrame(loop); if(state!==STATE.PLAY) return; fitHiDPI(); const rect=canvas.getBoundingClientRect(); const w=rect.width, h=rect.height; const dt=Math.min(0.033, (ts - lastTs)/1000 || 0); lastTs=ts; gameTime+=dt; gorilla.t += dt;
+  function loop(ts){ requestAnimationFrame(loop); if(state!==STATE.PLAY && state!==STATE.DEATH) return; fitHiDPI(); const rect=canvas.getBoundingClientRect(); const w=rect.width, h=rect.height; const dt=Math.min(0.033, (ts - lastTs)/1000 || 0); lastTs=ts; gameTime+=dt; gorilla.t += dt;
+    // Если идёт анимация смерти — рисуем её и выходим
+    if(state===STATE.DEATH && death){
+      const rect=canvas.getBoundingClientRect(); const w=rect.width, h=rect
     if(keys.has('ArrowUp') && !keyLatch.up){ gorilla.lane=Math.max(0, gorilla.lane-1); keyLatch.up=true; } if(!keys.has('ArrowUp')) keyLatch.up=false;
     if(keys.has('ArrowDown') && !keyLatch.down){ gorilla.lane=Math.min(gorilla.lanes-1, gorilla.lane+1); keyLatch.down=true; } if(!keys.has('ArrowDown')) keyLatch.down=false;
 
