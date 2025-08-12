@@ -277,8 +277,12 @@
     if(gorilla.holding){
       ctx.fillStyle = '#365347'; drawRoundedRect(18,-6, 26, 12, 6); ctx.fill(); strokeRectRounded(18,-6,26,12,6,getCss('--ink'),2);
       ctx.fillStyle = '#365347'; drawRoundedRect(4,-8, 22, 12, 6); ctx.fill(); strokeRectRounded(4,-8,22,12,6,getCss('--ink'),2);
-      ctx.fillStyle = gorilla.holding.kind==='stone'? '#b2966a' : '#f3c79c';
-      ctx.beginPath(); ctx.arc(44,-4, 10, 0, Math.PI*2); ctx.fill(); ctx.lineWidth=2; ctx.strokeStyle=getCss('--ink'); ctx.stroke();
+      if(gorilla.holding.kind==='stone'){
+        ctx.fillStyle = '#b2966a';
+        ctx.beginPath(); ctx.arc(44,-4, 10, 0, Math.PI*2); ctx.fill(); ctx.lineWidth=2; ctx.strokeStyle=getCss('--ink'); ctx.stroke();
+      } else {
+        drawHumanoidBody(44,-4, gorilla.holding.mass==='heavy' ? 1.15 : 1.0, -0.2);
+      }
     }
     ctx.restore();
     // рамка при неуязвимости
@@ -313,7 +317,27 @@
     }
   }
 
-  function drawProjectile(p){ const y=laneY(p.lane); if(p.kind==='stone'){ const g=ctx.createRadialGradient(p.x-3,y-20,2, p.x,y-18,p.r); g.addColorStop(0,'#e2d2ad'); g.addColorStop(1,'#b2966a'); ctx.fillStyle=g; ctx.beginPath(); ctx.arc(p.x, y-18, p.r, 0, Math.PI*2); ctx.fill(); ctx.lineWidth=2; ctx.strokeStyle=getCss('--ink'); ctx.stroke(); } else { ctx.fillStyle='#f3c79c'; ctx.beginPath(); ctx.arc(p.x, y-18, p.r, 0, Math.PI*2); ctx.fill(); ctx.strokeStyle=getCss('--ink'); ctx.lineWidth=2; ctx.stroke(); ctx.globalAlpha=.10; ctx.fillStyle='#eaf7ef'; ctx.fillRect(p.x-24, y-20, 24, 4); ctx.globalAlpha=1; } }
+  function drawHumanoidBody(x, y, size, angle, shirt, skin){
+    shirt = shirt || '#d0c47a';
+    skin  = skin  || '#f0d7b8';
+    ctx.save();
+    ctx.translate(x,y);
+    if(angle) ctx.rotate(angle);
+    // туловище
+    ctx.fillStyle = shirt;
+    drawRoundedRect(-10*size, -8*size, 20*size, 16*size, 6*size); ctx.fill();
+    strokeRectRounded(-10*size, -8*size, 20*size, 16*size, 6*size, getCss('--ink'), 2);
+    // голова
+    ctx.fillStyle = skin; ctx.beginPath(); ctx.arc(0, -12*size, 6*size, 0, Math.PI*2); ctx.fill(); ctx.lineWidth=2; ctx.strokeStyle=getCss('--ink'); ctx.stroke();
+    // руки
+    ctx.fillStyle = shirt; drawRoundedRect(-16*size, -6*size, 6*size, 4*size, 2*size); ctx.fill(); drawRoundedRect(10*size, -6*size, 6*size, 4*size, 2*size); ctx.fill();
+    // ноги
+    ctx.fillStyle = '#27221a'; drawRoundedRect(-6*size, 6*size, 6*size, 6*size, 2*size); ctx.fill(); drawRoundedRect(0, 6*size, 6*size, 6*size, 2*size); ctx.fill();
+    ctx.restore();
+  }
+
+  function drawProjectile(p){ const y=laneY(p.lane); if(p.kind==='stone'){ const g=ctx.createRadialGradient(p.x-3,y-20,2, p.x,y-18,p.r); g.addColorStop(0,'#e2d2ad'); g.addColorStop(1,'#b2966a'); ctx.fillStyle=g; ctx.beginPath(); ctx.arc(p.x, y-18, p.r, 0, Math.PI*2); ctx.fill(); ctx.lineWidth=2; ctx.strokeStyle=getCss('--ink'); ctx.stroke(); } else { const size = (p.r>=12? 1.15 : 1.0); const angle = 0.35 * Math.sin((window.gameTime||0)*7 + (p.spin||0)); drawHumanoidBody(p.x, y-12, size, angle); ctx.save(); ctx.globalAlpha = 0.12; ctx.fillStyle = '#eaf7ef'; ctx.fillRect(p.x-28, y-14, 24, 4); ctx.restore(); } }
+
   function drawStone(s){ const y=laneY(s.lane); const g=ctx.createRadialGradient(s.x-3,y-20,2, s.x,y-18,8); g.addColorStop(0,'#e2d2ad'); g.addColorStop(1,'#a88a5f'); ctx.fillStyle=g; ctx.beginPath(); ctx.arc(s.x, y-18, 8, 0, Math.PI*2); ctx.fill(); ctx.lineWidth=2; ctx.strokeStyle=getCss('--ink'); ctx.stroke(); }
 
   // === Игровая логика (как в Fixes B) ===
@@ -328,7 +352,7 @@
     if(keys.has('ArrowUp') && !keyLatch.up){ gorilla.lane=Math.max(0, gorilla.lane-1); keyLatch.up=true; } if(!keys.has('ArrowUp')) keyLatch.up=false;
     if(keys.has('ArrowDown') && !keyLatch.down){ gorilla.lane=Math.min(gorilla.lanes-1, gorilla.lane+1); keyLatch.down=true; } if(!keys.has('ArrowDown')) keyLatch.down=false;
 
-    if(keys.has('Space') && !keyLatch.space){ keyLatch.space=true; if(gorilla.holding){ const p={ kind:gorilla.holding.kind, lane: gorilla.lane, x: gorilla.x+50, vx: 540, r: gorilla.holding.kind==='stone'? 8 : (gorilla.holding.mass==='heavy'? 12 : 10) }; projectiles.push(p); gorilla.holding=null; } else { let target=null, minDx=9999; for(const e of enemies){ if(e.lane!==gorilla.lane) continue; const dx=e.x-(gorilla.x+22); if(dx>=-6 && dx<minDx && dx<62){ target=e; minDx=dx; } } if(target){ const idx=enemies.indexOf(target); if(idx>=0) enemies.splice(idx,1); gorilla.holding={ kind:'body', lane:gorilla.lane, mass: target.type==='heavy'?'heavy':'normal' }; processed++; } else { for(let i=0;i<stones.length;i++){ const s=stones[i]; if(s.lane!==gorilla.lane) continue; const dx=Math.abs(s.x-(gorilla.x+24)); if(dx<26){ gorilla.holding={kind:'stone',lane:gorilla.lane}; stones.splice(i,1); break; } } } }
+    if(keys.has('Space') && !keyLatch.space){ keyLatch.space=true; if(gorilla.holding){ const p={ kind:gorilla.holding.kind, lane: gorilla.lane, x: gorilla.x+50, vx: 540, r: gorilla.holding.kind==='stone'? 8 : (gorilla.holding.mass==='heavy'? 12 : 10), spin: Math.random()*Math.PI*2 }; projectiles.push(p); gorilla.holding=null; } else { let target=null, minDx=9999; for(const e of enemies){ if(e.lane!==gorilla.lane) continue; const dx=e.x-(gorilla.x+22); if(dx>=-6 && dx<minDx && dx<62){ target=e; minDx=dx; } } if(target){ const idx=enemies.indexOf(target); if(idx>=0) enemies.splice(idx,1); gorilla.holding={ kind:'body', lane:gorilla.lane, mass: target.type==='heavy'?'heavy':'normal' }; processed++; } else { for(let i=0;i<stones.length;i++){ const s=stones[i]; if(s.lane!==gorilla.lane) continue; const dx=Math.abs(s.x-(gorilla.x+24)); if(dx<26){ gorilla.holding={kind:'stone',lane:gorilla.lane}; stones.splice(i,1); break; } } } }
     }
     if(!keys.has('Space')) keyLatch.space=false;
 
